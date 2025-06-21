@@ -153,7 +153,13 @@
 	// Gallery.
 		$('.gallery')
 			.wrapInner('<div class="inner"></div>')
-			.prepend(browser.mobile ? '' : '<div class="forward"></div><div class="backward"></div>')
+			// Only add arrows for galleries that are NOT the product gallery
+			.each(function() {
+			  var $gallery = $(this);
+			  if (!($gallery.hasClass('style2') && $gallery.hasClass('large') && $gallery.hasClass('lightbox') && $gallery.hasClass('onscroll-fade-in'))) {
+			    $gallery.prepend(browser.mobile ? '' : '<div class="forward"></div><div class="backward"></div>');
+			  }
+			})
 			.scrollex({
 				top:		'30vh',
 				bottom:		'30vh',
@@ -179,49 +185,70 @@
 			.children('.inner')
 				//.css('overflow', 'hidden')
 				.css('overflow-y', browser.mobile ? 'visible' : 'hidden')
-				.css('overflow-x', browser.mobile ? 'scroll' : 'hidden')
+				// Force horizontal scroll for product gallery
+				.each(function() {
+				  var $parent = $(this).parent('.gallery');
+				  if ($parent.hasClass('style2') && $parent.hasClass('large') && $parent.hasClass('lightbox') && $parent.hasClass('onscroll-fade-in')) {
+				    $(this).css('overflow-x', 'scroll');
+				    // === Auto-scroll for Product Gallery ===
+				    var $inner = $(this);
+				    var isPaused = false;
+				    setInterval(function() {
+				      if (!isPaused) {
+				        $inner[0].scrollLeft += 1;
+				        if ($inner[0].scrollLeft + $inner[0].clientWidth >= $inner[0].scrollWidth - 1) {
+				          $inner[0].scrollLeft = 0;
+				        }
+				      }
+				    }, 20);
+				    $parent.on('mouseenter', function () { isPaused = true; });
+				    $parent.on('mouseleave', function () { isPaused = false; });
+				    $inner.on('focusin', function () { isPaused = true; });
+				    $inner.on('focusout', function () { isPaused = false; });
+				  } else {
+				    $(this).css('overflow-x', browser.mobile ? 'scroll' : 'hidden');
+				  }
+				})
 				.scrollLeft(0);
 
-		// Style #1.
-			// ...
+		// Remove mouseover scroll interaction for product gallery only
+		$('.gallery').each(function() {
+		  var $gallery = $(this);
+		  if ($gallery.hasClass('style2') && $gallery.hasClass('large') && $gallery.hasClass('lightbox') && $gallery.hasClass('onscroll-fade-in')) {
+		    $gallery.off('mouseenter mouseleave', '.forward, .backward');
+		    $gallery.find('.forward, .backward').remove();
+		  }
+		});
 
 		// Style #2.
 			$('.gallery')
-				.on('wheel', '.inner', function(event) {
-
-					var	$this = $(this),
-						delta = (event.originalEvent.deltaX * 10);
-
-					// Cap delta.
-						if (delta > 0)
-							delta = Math.min(25, delta);
-						else if (delta < 0)
-							delta = Math.max(-25, delta);
-
-					// Scroll.
-						$this.scrollLeft( $this.scrollLeft() + delta );
-
-				})
-				.on('mouseenter', '.forward, .backward', function(event) {
-
-					var $this = $(this),
-						$inner = $this.siblings('.inner'),
-						direction = ($this.hasClass('forward') ? 1 : -1);
-
-					// Clear move interval.
-						clearInterval(this._gallery_moveIntervalId);
-
-					// Start interval.
-						this._gallery_moveIntervalId = setInterval(function() {
-							$inner.scrollLeft( $inner.scrollLeft() + (5 * direction) );
-						}, 10);
-
-				})
-				.on('mouseleave', '.forward, .backward', function(event) {
-
-					// Clear move interval.
-						clearInterval(this._gallery_moveIntervalId);
-
+				// Only attach wheel and arrow handlers for non-product galleries
+				.each(function() {
+				  var $gallery = $(this);
+				  if (!($gallery.hasClass('style2') && $gallery.hasClass('large') && $gallery.hasClass('lightbox') && $gallery.hasClass('onscroll-fade-in'))) {
+				    $gallery
+				    .on('wheel', '.inner', function(event) {
+				      var $this = $(this),
+				        delta = (event.originalEvent.deltaX * 10);
+				      if (delta > 0)
+				        delta = Math.min(25, delta);
+				      else if (delta < 0)
+				        delta = Math.max(-25, delta);
+				      $this.scrollLeft($this.scrollLeft() + delta);
+				    })
+				    .on('mouseenter', '.forward, .backward', function(event) {
+				      var $this = $(this),
+				        $inner = $this.siblings('.inner'),
+				        direction = ($this.hasClass('forward') ? 1 : -1);
+				      clearInterval(this._gallery_moveIntervalId);
+				      this._gallery_moveIntervalId = setInterval(function() {
+				        $inner.scrollLeft($inner.scrollLeft() + (5 * direction));
+				      }, 10);
+				    })
+				    .on('mouseleave', '.forward, .backward', function(event) {
+				      clearInterval(this._gallery_moveIntervalId);
+				    });
+				  }
 				});
 
 		// Lightbox.
